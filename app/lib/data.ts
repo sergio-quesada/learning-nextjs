@@ -1,15 +1,16 @@
-import postgres from 'postgres';
+import { pool } from '@/db/db';
 import {
   CustomerField,
   CustomersTableType,
   InvoiceForm,
   InvoicesTable,
+  LatestInvoice,
   LatestInvoiceRaw,
   Revenue,
 } from './definitions';
 import { formatCurrency } from './utils';
 
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+const connection = await pool.getConnection();
 
 export async function fetchRevenue() {
   try {
@@ -19,11 +20,11 @@ export async function fetchRevenue() {
     // console.log('Fetching revenue data...');
     // await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    const data = await sql<Revenue[]>`SELECT * FROM revenue`;
+    const [data] = await connection.query(`SELECT * FROM revenue`);
 
     // console.log('Data fetch completed after 3 seconds.');
 
-    return data;
+    return data as Revenue[];
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch revenue data.');
@@ -32,18 +33,17 @@ export async function fetchRevenue() {
 
 export async function fetchLatestInvoices() {
   try {
-    const data = await sql<LatestInvoiceRaw[]>`
+    const [data] = await connection.query(`
       SELECT invoices.amount, customers.name, customers.image_url, customers.email, invoices.id
       FROM invoices
       JOIN customers ON invoices.customer_id = customers.id
       ORDER BY invoices.date DESC
-      LIMIT 5`;
-
-    const latestInvoices = data.map((invoice) => ({
+      LIMIT 5`);
+    const latestInvoices = (data as LatestInvoiceRaw[]).map((invoice) => ({
       ...invoice,
       amount: formatCurrency(invoice.amount),
     }));
-    return latestInvoices;
+    return latestInvoices as LatestInvoice[];
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch the latest invoices.');
