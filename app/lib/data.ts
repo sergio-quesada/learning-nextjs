@@ -55,23 +55,24 @@ export async function fetchCardData() {
     // You can probably combine these into a single SQL query
     // However, we are intentionally splitting them to demonstrate
     // how to initialize multiple queries in parallel with JS.
-    const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
-    const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
-    const invoiceStatusPromise = sql`SELECT
+    const [invoiceCountResult, customerCountResult, invoiceStatusResult] =
+      await Promise.all([
+        connection.query(`SELECT COUNT(*) AS "count" FROM invoices`),
+        connection.query(`SELECT COUNT(*) AS "count"FROM customers`),
+        connection.query(`SELECT
          SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
          SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-         FROM invoices`;
+         FROM invoices`),
+      ]);
 
-    const data = await Promise.all([
-      invoiceCountPromise,
-      customerCountPromise,
-      invoiceStatusPromise,
-    ]);
+    const [invoiceStatusRow] = invoiceStatusResult;
+    const [invoiceCountRow] = invoiceCountResult;
+    const [customerCountRow] = customerCountResult;
 
-    const numberOfInvoices = Number(data[0][0].count ?? '0');
-    const numberOfCustomers = Number(data[1][0].count ?? '0');
-    const totalPaidInvoices = formatCurrency(data[2][0].paid ?? '0');
-    const totalPendingInvoices = formatCurrency(data[2][0].pending ?? '0');
+    const numberOfInvoices = Number(invoiceCountRow?.[0]?.count ?? 0);
+    const numberOfCustomers = Number(customerCountRow?.[0]?.count ?? 0);
+    const totalPaidInvoices = formatCurrency(invoiceStatusRow?.[0]?.paid ?? 0);
+    const totalPendingInvoices = formatCurrency(invoiceStatusRow?.[0]?.pending ?? 0);
 
     return {
       numberOfCustomers,
