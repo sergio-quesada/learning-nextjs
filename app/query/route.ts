@@ -3,7 +3,7 @@ import { pool } from '@/db/db';
 const connection = await pool.getConnection();
 
 async function listInvoices() {
-  const data = await pool.query(`
+  const [data] = await pool.query(`
     SELECT invoices.amount, customers.name
     FROM invoices
     JOIN customers ON invoices.customer_id = customers.id
