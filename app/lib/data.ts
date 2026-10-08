@@ -65,9 +65,9 @@ export async function fetchCardData() {
          FROM invoices`),
       ]);
 
-    const [invoiceStatusRow] = invoiceStatusResult;
-    const [invoiceCountRow] = invoiceCountResult;
-    const [customerCountRow] = customerCountResult;
+    const [invoiceStatusRow] = invoiceStatusResult as any[];
+    const [invoiceCountRow] = invoiceCountResult as any[];
+    const [customerCountRow] = customerCountResult as any[];
 
     const numberOfInvoices = Number(invoiceCountRow?.[0]?.count ?? 0);
     const numberOfCustomers = Number(customerCountRow?.[0]?.count ?? 0);
