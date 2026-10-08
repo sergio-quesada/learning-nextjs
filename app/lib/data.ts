@@ -3,7 +3,10 @@ import {
   CustomerField,
   CustomersTableType,
   InvoiceForm,
-  InvoicesTable
+  InvoicesTable,
+  Revenue,
+  LatestInvoice,
+  LatestInvoiceRaw
 } from './definitions';
 import { formatCurrency } from './utils';
 
@@ -21,7 +24,7 @@ export async function fetchRevenue() {
 
     console.log('Data fetch completed after 3 seconds.');
 
-    return data;
+    return data as Revenue[];
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch revenue data.');
@@ -36,11 +39,11 @@ export async function fetchLatestInvoices() {
       JOIN customers ON invoices.customer_id = customers.id
       ORDER BY invoices.date DESC
       LIMIT 5`);
-    const latestInvoices = data.map((invoice) => ({
+    const latestInvoices = (data as LatestInvoiceRaw[]).map((invoice) => ({
       ...invoice,
       amount: formatCurrency(invoice.amount),
     }));
-    return latestInvoices;
+    return latestInvoices as LatestInvoice[];
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch the latest invoices.');
