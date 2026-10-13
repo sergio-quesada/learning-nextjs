@@ -1,30 +1,29 @@
-import { pool } from '@/db/db';
+import postgres from 'postgres';
 import {
   CustomerField,
   CustomersTableType,
   InvoiceForm,
   InvoicesTable,
+  LatestInvoiceRaw,
   Revenue,
-  LatestInvoice,
-  LatestInvoiceRaw
 } from './definitions';
 import { formatCurrency } from './utils';
 
-const connection = await pool.getConnection();
+const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
 export async function fetchRevenue() {
   try {
     // Artificially delay a response for demo purposes.
     // Don't do this in production :)
 
-    console.log('Fetching revenue data...');
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    // console.log('Fetching revenue data...');
+    // await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    const [data] = await connection.query(`SELECT * FROM revenue`);
+    const data = await sql<Revenue[]>`SELECT * FROM revenue`;
 
-    console.log('Data fetch completed after 3 seconds.');
+    // console.log('Data fetch completed after 3 seconds.');
 
-    return data as Revenue[];
+    return data;
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch revenue data.');
@@ -33,17 +32,18 @@ export async function fetchRevenue() {
 
 export async function fetchLatestInvoices() {
   try {
-    const [data] = await connection.query(`
+    const data = await sql<LatestInvoiceRaw[]>`
       SELECT invoices.amount, customers.name, customers.image_url, customers.email, invoices.id
       FROM invoices
       JOIN customers ON invoices.customer_id = customers.id
       ORDER BY invoices.date DESC
-      LIMIT 5`);
-    const latestInvoices = (data as LatestInvoiceRaw[]).map((invoice) => ({
+      LIMIT 5`;
+
+    const latestInvoices = data.map((invoice) => ({
       ...invoice,
       amount: formatCurrency(invoice.amount),
     }));
-    return latestInvoices as LatestInvoice[];
+    return latestInvoices;
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch the latest invoices.');
@@ -55,24 +55,23 @@ export async function fetchCardData() {
     // You can probably combine these into a single SQL query
     // However, we are intentionally splitting them to demonstrate
     // how to initialize multiple queries in parallel with JS.
-    const [invoiceCountResult, customerCountResult, invoiceStatusResult] =
-      await Promise.all([
-        connection.query(`SELECT COUNT(*) AS "count" FROM invoices`),
-        connection.query(`SELECT COUNT(*) AS "count"FROM customers`),
-        connection.query(`SELECT
+    const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
+    const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
+    const invoiceStatusPromise = sql`SELECT
          SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
          SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-         FROM invoices`),
-      ]);
+         FROM invoices`;
 
-    const [invoiceStatusRow] = invoiceStatusResult as any[];
-    const [invoiceCountRow] = invoiceCountResult as any[];
-    const [customerCountRow] = customerCountResult as any[];
+    const data = await Promise.all([
+      invoiceCountPromise,
+      customerCountPromise,
+      invoiceStatusPromise,
+    ]);
 
-    const numberOfInvoices = Number(invoiceCountRow?.[0]?.count ?? 0);
-    const numberOfCustomers = Number(customerCountRow?.[0]?.count ?? 0);
-    const totalPaidInvoices = formatCurrency(invoiceStatusRow?.[0]?.paid ?? 0);
-    const totalPendingInvoices = formatCurrency(invoiceStatusRow?.[0]?.pending ?? 0);
+    const numberOfInvoices = Number(data[0][0].count ?? '0');
+    const numberOfCustomers = Number(data[1][0].count ?? '0');
+    const totalPaidInvoices = formatCurrency(data[2][0].paid ?? '0');
+    const totalPendingInvoices = formatCurrency(data[2][0].pending ?? '0');
 
     return {
       numberOfCustomers,
