@@ -1,8 +1,22 @@
 import postgres from 'postgres';
+import { pool } from '@/db/db';
 
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
-async function listInvoices() {
+async function listInvoicesMySQL() {
+
+  const connection = await pool.getConnection();
+  const [data] = await pool.query(`
+    SELECT invoices.amount, customers.name
+    FROM invoices
+    JOIN customers ON invoices.customer_id = customers.id
+    WHERE invoices.amount = 666;
+    `);
+
+  return data;
+}
+
+async function listInvoicesPostgresSQL() {
+  const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
   const data = await sql`
     SELECT invoices.amount, customers.name
     FROM invoices
@@ -13,9 +27,14 @@ async function listInvoices() {
   return data;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    return Response.json(await listInvoices());
+    if (request.url.startsWith('http://localhost')) {
+      return Response.json(await listInvoicesMySQL());
+    }
+    else {
+      return Response.json(await listInvoicesPostgresSQL());
+    }
   } catch (error) {
     return Response.json({ error }, { status: 500 });
   }

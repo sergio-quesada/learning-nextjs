@@ -1,10 +1,11 @@
 import bcrypt from 'bcrypt';
 import postgres from 'postgres';
+import { pool } from '@/db/db';
 import { invoices, customers, revenue, users } from '../lib/placeholder-data';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require', prepare: false });
 
-async function seedUsers() {
+async function seedUsersPostgresSQL() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
   await sql`
     CREATE TABLE IF NOT EXISTS users (
@@ -29,7 +30,7 @@ async function seedUsers() {
   return insertedUsers;
 }
 
-async function seedInvoices() {
+async function seedInvoicesPostgresSQL() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
   await sql`
@@ -55,7 +56,7 @@ async function seedInvoices() {
   return insertedInvoices;
 }
 
-async function seedCustomers() {
+async function seedCustomersPostgresSQL() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
   await sql`
@@ -80,7 +81,7 @@ async function seedCustomers() {
   return insertedCustomers;
 }
 
-async function seedRevenue() {
+async function seedRevenuePostgresSQL() {
   await sql`
     CREATE TABLE IF NOT EXISTS revenue (
       month VARCHAR(4) NOT NULL UNIQUE,
@@ -101,15 +102,150 @@ async function seedRevenue() {
   return insertedRevenue;
 }
 
-export async function GET() {
-  try {
-    const result = await sql.begin((sql) => [
-      seedUsers(),
-      seedCustomers(),
-      seedInvoices(),
-      seedRevenue(),
-    ]);
+const connection = await pool.getConnection();
 
+async function seedUsersMySQL() {
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id CHAR(36) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      password TEXT NOT NULL
+    );
+  `);
+
+  const insertedUsers = await Promise.all(
+    users.map(async (user) => {
+      const hashedPassword = await bcrypt.hash(user.password, 10);
+
+      return connection.query(
+        `
+        INSERT INTO users (id, name, email, password)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE id = id;
+        `,
+        [
+          user.id,
+          user.name,
+          user.email,
+          hashedPassword,
+        ],
+      );
+    }),
+  );
+
+  return insertedUsers;
+}
+
+async function seedInvoicesMySQL() {
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS invoices (
+      id int auto_increment PRIMARY KEY,
+      customer_id CHAR(36) NOT NULL,
+      amount INT NOT NULL,
+      status VARCHAR(255) NOT NULL,
+      date DATE NOT NULL
+    );
+  `);
+
+  const insertedInvoices = await Promise.all(
+    invoices.map(
+      (invoice) => connection.query(
+        `
+        INSERT INTO invoices (customer_id, amount, status, date)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE id = id;
+        `,
+        [
+          invoice.customer_id,
+          invoice.amount,
+          invoice.status,
+          invoice.date,
+        ],
+      ),
+    ),
+  );
+
+  return insertedInvoices;
+}
+
+async function seedCustomersMySQL() {
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS customers (
+      id CHAR(36) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      image_url VARCHAR(255) NOT NULL
+    );
+  `);
+
+  const insertedCustomers = await Promise.all(
+    customers.map(
+      (customer) => connection.query(
+        `
+        INSERT INTO customers (id, name, email, image_url)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE id = id;
+        `,
+        [
+          customer.id,
+          customer.name,
+          customer.email,
+          customer.image_url,
+        ],
+      ),
+    ),
+  );
+
+  return insertedCustomers;
+}
+
+async function seedRevenueMySQL() {
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS revenue (
+      month VARCHAR(4) NOT NULL UNIQUE,
+      revenue INT NOT NULL
+    );
+  `);
+
+  const insertedRevenue = await Promise.all(
+    revenue.map(
+      (rev) => connection.query(
+        `
+        INSERT INTO revenue (month, revenue)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE month = month;
+        `,
+        [
+          rev.month,
+          rev.revenue,
+        ],
+      ),
+    ),
+  );
+
+  return insertedRevenue;
+}
+
+export async function GET(request: Request) {
+  try {
+    if (request.url.startsWith('http://localhost')) {
+      await connection.beginTransaction();
+      await seedUsersMySQL();
+      await seedCustomersMySQL();
+      await seedInvoicesMySQL();
+      await seedRevenueMySQL();
+      await connection.commit();
+      return Response.json({ message: 'Database seeded successfully' });
+    }
+    else {
+      const result = await sql.begin((sql) => [
+        seedUsersPostgresSQL(),
+        seedCustomersPostgresSQL(),
+        seedInvoicesPostgresSQL(),
+        seedRevenuePostgresSQL(),
+      ]);
+    }
     return Response.json({ message: 'Database seeded successfully' });
   } catch (error) {
     return Response.json({ error }, { status: 500 });
