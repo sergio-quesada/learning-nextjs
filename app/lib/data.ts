@@ -231,10 +231,7 @@ export async function fetchRevenueMySQL() {
 
     // console.log('Data fetch completed after 3 seconds.');
 
-    return data.map((invoice) => ({
-      ...invoice,
-      amount: Number(invoice.amount),
-    }));
+    return data;
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch revenue data.');
