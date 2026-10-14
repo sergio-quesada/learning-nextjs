@@ -10,17 +10,13 @@ import {
   Revenue,
 } from './definitions';
 import { formatCurrency } from './utils';
-
-
-let connection: any;
+const connection = await pool.getConnection();
 let sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 export async function fetchRevenuePostgresSQL() {
   const headersList = await headers();
   const pathname = headersList.get('host') || '';
   const isLocal = pathname.startsWith('localhost');
-  if (isLocal) {
-    connection = await pool.getConnection();
-  } else {
+  if (!isLocal) {
     sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
   }
   try {
