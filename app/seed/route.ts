@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import { headers } from 'next/headers';
 import postgres from 'postgres';
 import { pool } from '@/db/db';
 import { invoices, customers, revenue, users } from '../lib/placeholder-data';
@@ -229,7 +230,11 @@ async function seedRevenueMySQL() {
 
 export async function GET(request: Request) {
   try {
-    if (request.url.startsWith('http://localhost')) {
+    const headersList = await headers();
+    console.log(headersList.get('x-pathname'));
+    const pathname = headersList.get('host') || '';
+    const isLocal = pathname.startsWith('localhost');
+    if (isLocal) {
       await connection.beginTransaction();
       await seedUsersMySQL();
       await seedCustomersMySQL();

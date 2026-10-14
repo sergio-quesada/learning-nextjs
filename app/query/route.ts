@@ -29,7 +29,11 @@ async function listInvoicesPostgresSQL() {
 
 export async function GET(request: Request) {
   try {
-    if (request.url.startsWith('http://localhost')) {
+    const headersList = await headers();
+    console.log(headersList.get('x-pathname'));
+    const pathname = headersList.get('host') || '';
+    const isLocal = pathname.startsWith('localhost');
+    if (isLocal) {
       return Response.json(await listInvoicesMySQL());
     }
     else {
