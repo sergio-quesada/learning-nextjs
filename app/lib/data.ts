@@ -265,12 +265,12 @@ export async function fetchCardDataMySQL() {
     // how to initialize multiple queries in parallel with JS.
     const [invoiceCountResult, customerCountResult, invoiceStatusResult] =
       await Promise.all([
-        connection.query(`SELECT COUNT(*) AS "count" FROM invoices`),
-        connection.query(`SELECT COUNT(*) AS "count"FROM customers`),
+        connection.query(`SELECT COUNT(*) AS "count" FROM invoices`) as unknown as [any[], any],
+        connection.query(`SELECT COUNT(*) AS "count"FROM customers`) as unknown as [any[], any],
         connection.query(`SELECT
          SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
          SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-         FROM invoices`),
+         FROM invoices`) as unknown as [any[], any],
       ]);
 
     const [invoiceStatusRow] = invoiceStatusResult;
