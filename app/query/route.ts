@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import postgres from 'postgres';
 import { pool } from '@/db/db';
 
