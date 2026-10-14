@@ -246,14 +246,11 @@ export async function fetchLatestInvoicesMySQL() {
       JOIN customers ON invoices.customer_id = customers.id
       ORDER BY invoices.date DESC
       LIMIT 5`);
-    let latestInvoices = [];
-    for (const invoice of data) {
-      latestInvoices.push({
-        ...invoice,
-        amount: invoice.amount, // Sigue siendo un número puro
-        formattedAmount: formatCurrency(Number(invoice.amount)), // String para la interfaz
-      });
-    }
+    const latestInvoices = data.map((invoice) => ({
+      ...invoice,
+      amount: invoice.amount, // Sigue siendo un número puro
+      formattedAmount: formatCurrency(Number(invoice.amount)), // String para la interfaz
+    }));
     return latestInvoices;
   } catch (error) {
     console.error('Database Error:', error);
