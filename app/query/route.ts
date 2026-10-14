@@ -31,7 +31,8 @@ async function listInvoicesPostgresSQL() {
 export async function GET(request: Request) {
   try {
     const headersList = await headers();
-    console.log(headersList.get('x-pathname'));
+    console.log(headersList.get('host'));
+    console.log(headersList.get('host'));
     const pathname = headersList.get('host') || '';
     const isLocal = pathname.startsWith('localhost');
     if (isLocal) {
