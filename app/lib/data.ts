@@ -10,15 +10,17 @@ import {
   Revenue,
 } from './definitions';
 import { formatCurrency } from './utils';
-const connection = await pool.getConnection();
+let connection: any;
 let sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+const headersList = await headers();
+const pathname = headersList.get('host') || '';
+const isLocal = pathname.startsWith('localhost');
+if (isLocal) {
+  connection = await pool.getConnection();
+} else {
+  sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+}
 export async function fetchRevenuePostgresSQL() {
-  const headersList = await headers();
-  const pathname = headersList.get('host') || '';
-  const isLocal = pathname.startsWith('localhost');
-  if (!isLocal) {
-    sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
-  }
   try {
     // Artificially delay a response for demo purposes.
     // Don't do this in production :)
@@ -232,7 +234,7 @@ export async function fetchRevenueMySQL() {
     // console.log('Fetching revenue data...');
     // await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    const [data] = await connection.query(`SELECT * FROM revenue`);
+    const [data] = await connection.query(`SELECT * FROM revenue`) as unknown as [any[], any];
 
     // console.log('Data fetch completed after 3 seconds.');
 
