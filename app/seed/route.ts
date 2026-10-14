@@ -103,9 +103,7 @@ async function seedRevenuePostgresSQL() {
   return insertedRevenue;
 }
 
-const connection = await pool.getConnection();
-
-async function seedUsersMySQL() {
+async function seedUsersMySQL(connection: any) {
   await connection.query(`
     CREATE TABLE IF NOT EXISTS users (
       id CHAR(36) PRIMARY KEY,
@@ -138,7 +136,7 @@ async function seedUsersMySQL() {
   return insertedUsers;
 }
 
-async function seedInvoicesMySQL() {
+async function seedInvoicesMySQL(connection: any) {
   await connection.query(`
     CREATE TABLE IF NOT EXISTS invoices (
       id int auto_increment PRIMARY KEY,
@@ -170,7 +168,7 @@ async function seedInvoicesMySQL() {
   return insertedInvoices;
 }
 
-async function seedCustomersMySQL() {
+async function seedCustomersMySQL(connection: any) {
   await connection.query(`
     CREATE TABLE IF NOT EXISTS customers (
       id CHAR(36) PRIMARY KEY,
@@ -201,7 +199,7 @@ async function seedCustomersMySQL() {
   return insertedCustomers;
 }
 
-async function seedRevenueMySQL() {
+async function seedRevenueMySQL(connection: any) {
   await connection.query(`
     CREATE TABLE IF NOT EXISTS revenue (
       month VARCHAR(4) NOT NULL UNIQUE,
@@ -234,12 +232,13 @@ export async function GET(request: Request) {
     console.log(headersList.get('host'));
     const pathname = headersList.get('host') || '';
     const isLocal = pathname.startsWith('localhost');
+    const connection = await pool.getConnection();
     if (isLocal) {
       await connection.beginTransaction();
-      await seedUsersMySQL();
-      await seedCustomersMySQL();
-      await seedInvoicesMySQL();
-      await seedRevenueMySQL();
+      await seedUsersMySQL(connection);
+      await seedCustomersMySQL(connection);
+      await seedInvoicesMySQL(connection);
+      await seedRevenueMySQL(connection);
       await connection.commit();
       return Response.json({ message: 'Database seeded successfully' });
     }
