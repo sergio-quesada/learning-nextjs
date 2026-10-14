@@ -1,5 +1,6 @@
 import postgres from 'postgres';
 import { pool } from '@/db/db';
+import { headers } from 'next/headers';
 import {
   CustomerField,
   CustomersTableType,
@@ -10,8 +11,16 @@ import {
 } from './definitions';
 import { formatCurrency } from './utils';
 
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
-const connection = await pool.getConnection();
+const headersList = await headers();
+const pathname = headersList.get('host') || '';
+const isLocal = pathname.startsWith('localhost');
+let connection: any;
+let sql: any;
+if (isLocal) {
+  connection = await pool.getConnection();
+} else {
+  sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+}
 
 export async function fetchRevenuePostgresSQL() {
   try {

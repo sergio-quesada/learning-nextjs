@@ -3,7 +3,6 @@ import { fetchRevenuePostgresSQL, fetchLatestInvoicesPostgresSQL, fetchCardDataP
 
 export async function getDashboardData() {
     const headersList = await headers();
-    console.log(headersList.get('x-pathname'));
     const pathname = headersList.get('host') || '';
     // Corrección de la condición (ejemplo usando el header o una variable de entorno)
     const isLocal = pathname.startsWith('localhost');
