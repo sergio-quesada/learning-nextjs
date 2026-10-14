@@ -11,7 +11,7 @@ export async function getDashboardData() {
     if (isLocal) {
         // Ejecutamos en paralelo para máxima velocidad
         const [revenue, latestInvoices, cardData] = await Promise.all([
-            fetchRevenueMySQL() as Promise<Revenue[]>,
+            fetchRevenueMySQL() as Promise<any[]>,
             fetchLatestInvoicesMySQL(),
             fetchCardDataMySQL()
         ]);
