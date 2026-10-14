@@ -12,12 +12,12 @@ import {
 import { formatCurrency } from './utils';
 
 
+let connection: any;
+let sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 export async function fetchRevenuePostgresSQL() {
   const headersList = await headers();
   const pathname = headersList.get('host') || '';
   const isLocal = pathname.startsWith('localhost');
-  let connection: any;
-  let sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
   if (isLocal) {
     connection = await pool.getConnection();
   } else {
