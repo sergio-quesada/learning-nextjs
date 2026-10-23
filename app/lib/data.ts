@@ -1,25 +1,19 @@
 import postgres from 'postgres';
 import { pool } from '@/db/db';
-import { headers } from 'next/headers';
 import {
   CustomerField,
   CustomersTableType,
   InvoiceForm,
   InvoicesTable,
   LatestInvoiceRaw,
+  LatestInvoice,
   Revenue,
+  Customer,
 } from './definitions';
 import { formatCurrency } from './utils';
-let connection: any;
-let sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
-const headersList = await headers();
-const pathname = headersList.get('host') || '';
-const isLocal = pathname.startsWith('localhost');
-if (isLocal) {
-  connection = await pool.getConnection();
-} else {
-  sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
-}
+const isLocal = process.env.VERCEL !== '1';
+const connection = isLocal ? await pool.getConnection() : postgres(process.env.POSTGRES_URL!, { ssl: 'require' }) as any;
+
 export async function fetchRevenuePostgresSQL() {
   try {
     // Artificially delay a response for demo purposes.
@@ -28,7 +22,7 @@ export async function fetchRevenuePostgresSQL() {
     // console.log('Fetching revenue data...');
     // await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    const data = await sql<Revenue[]>`SELECT * FROM revenue`;
+    const data = await connection<Revenue[]>`SELECT * FROM revenue` as unknown as Revenue[];
 
     // console.log('Data fetch completed after 3 seconds.');
 
@@ -41,16 +35,16 @@ export async function fetchRevenuePostgresSQL() {
 
 export async function fetchLatestInvoicesPostgresSQL() {
   try {
-    const data = await sql<LatestInvoiceRaw[]>`
+    const data = await connection<LatestInvoiceRaw[]>`
       SELECT invoices.amount, customers.name, customers.image_url, customers.email, invoices.id
       FROM invoices
       JOIN customers ON invoices.customer_id = customers.id
       ORDER BY invoices.date DESC
-      LIMIT 5`;
+      LIMIT 5` as unknown as LatestInvoice[];
 
     const latestInvoices = data.map((invoice) => ({
       ...invoice,
-      amount: formatCurrency(invoice.amount),
+      amount: formatCurrency(Number(invoice.amount)),
     }));
     return latestInvoices;
   } catch (error) {
@@ -64,12 +58,12 @@ export async function fetchCardDataPostgresSQL() {
     // You can probably combine these into a single SQL query
     // However, we are intentionally splitting them to demonstrate
     // how to initialize multiple queries in parallel with JS.
-    const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
-    const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
-    const invoiceStatusPromise = sql`SELECT
+    const invoiceCountPromise = connection.query(`SELECT COUNT(*) FROM invoices`);
+    const customerCountPromise = connection.query(`SELECT COUNT(*) FROM customers`);
+    const invoiceStatusPromise = connection.query(`SELECT
          SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
          SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
-         FROM invoices`;
+         FROM invoices`);
 
     const data = await Promise.all([
       invoiceCountPromise,
@@ -101,7 +95,7 @@ export async function fetchFilteredInvoicesPostgresSQL(
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
-    const invoices = await sql<InvoicesTable[]>`
+    const [invoices] = await connection<InvoicesTable[]>`
       SELECT
         invoices.id,
         invoices.amount,
@@ -120,7 +114,7 @@ export async function fetchFilteredInvoicesPostgresSQL(
         invoices.status ILIKE ${`%${query}%`}
       ORDER BY invoices.date DESC
       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
-    `;
+    ` as unknown as InvoicesTable[];
 
     return invoices;
   } catch (error) {
@@ -131,7 +125,7 @@ export async function fetchFilteredInvoicesPostgresSQL(
 
 export async function fetchInvoicesPagesPostgresSQL(query: string) {
   try {
-    const data = await sql`SELECT COUNT(*)
+    const data = await connection`SELECT COUNT(*)
     FROM invoices
     JOIN customers ON invoices.customer_id = customers.id
     WHERE
@@ -152,7 +146,7 @@ export async function fetchInvoicesPagesPostgresSQL(query: string) {
 
 export async function fetchInvoiceByIdPostgresSQL(id: string) {
   try {
-    const data = await sql<InvoiceForm[]>`
+    const data = await connection<InvoiceForm[]>`
       SELECT
         invoices.id,
         invoices.customer_id,
@@ -160,12 +154,12 @@ export async function fetchInvoiceByIdPostgresSQL(id: string) {
         invoices.status
       FROM invoices
       WHERE invoices.id = ${id};
-    `;
+    ` as unknown as LatestInvoice[];
 
     const invoice = data.map((invoice) => ({
       ...invoice,
       // Convert amount from cents to dollars
-      amount: invoice.amount / 100,
+      amount: Number(invoice.amount) / 100,
     }));
 
     return invoice[0];
@@ -177,7 +171,7 @@ export async function fetchInvoiceByIdPostgresSQL(id: string) {
 
 export async function fetchCustomersPostgresSQL() {
   try {
-    const customers = await sql<CustomerField[]>`
+    const customers = await connection<CustomerField[]>`
       SELECT
         id,
         name
@@ -194,7 +188,7 @@ export async function fetchCustomersPostgresSQL() {
 
 export async function fetchFilteredCustomersPostgresSQL(query: string) {
   try {
-    const data = await sql<CustomersTableType[]>`
+    const data = await connection<CustomersTableType[]>`
 		SELECT
 		  customers.id,
 		  customers.name,
@@ -210,7 +204,7 @@ export async function fetchFilteredCustomersPostgresSQL(query: string) {
         customers.email ILIKE ${`%${query}%`}
 		GROUP BY customers.id, customers.name, customers.email, customers.image_url
 		ORDER BY customers.name ASC
-	  `;
+	  ` as unknown as CustomersTableType[];
 
     const customers = data.map((customer) => ({
       ...customer,
@@ -309,7 +303,7 @@ export async function fetchFilteredInvoicesMySQL(
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
-    const invoices = await sql<InvoicesTable[]>`
+    const invoices = await connection<InvoicesTable[]>`
       SELECT
         invoices.id,
         invoices.amount,
@@ -339,7 +333,7 @@ export async function fetchFilteredInvoicesMySQL(
 
 export async function fetchInvoicesPagesMySQL(query: string) {
   try {
-    const data = await sql`SELECT COUNT(*)
+    const data = await connection`SELECT COUNT(*)
     FROM invoices
     JOIN customers ON invoices.customer_id = customers.id
     WHERE
@@ -360,7 +354,7 @@ export async function fetchInvoicesPagesMySQL(query: string) {
 
 export async function fetchInvoiceByIdMySQL(id: string) {
   try {
-    const data = await sql<InvoiceForm[]>`
+    const data = await connection<InvoiceForm[]>`
       SELECT
         invoices.id,
         invoices.customer_id,
@@ -368,12 +362,12 @@ export async function fetchInvoiceByIdMySQL(id: string) {
         invoices.status
       FROM invoices
       WHERE invoices.id = ${id};
-    `;
+    ` as unknown as InvoiceForm[];
 
     const invoice = data.map((invoice) => ({
       ...invoice,
       // Convert amount from cents to dollars
-      amount: invoice.amount / 100,
+      amount: Number(invoice.amount) / 100,
     }));
 
     return invoice[0];
@@ -385,7 +379,7 @@ export async function fetchInvoiceByIdMySQL(id: string) {
 
 export async function fetchCustomersMySQL() {
   try {
-    const customers = await sql<CustomerField[]>`
+    const customers = await connection<CustomerField[]>`
       SELECT
         id,
         name
@@ -402,7 +396,7 @@ export async function fetchCustomersMySQL() {
 
 export async function fetchFilteredCustomersMySQL(query: string) {
   try {
-    const data = await sql<CustomersTableType[]>`
+    const data = await connection<CustomersTableType[]>`
 		SELECT
 		  customers.id,
 		  customers.name,
@@ -418,7 +412,7 @@ export async function fetchFilteredCustomersMySQL(query: string) {
         customers.email ILIKE ${`%${query}%`}
 		GROUP BY customers.id, customers.name, customers.email, customers.image_url
 		ORDER BY customers.name ASC
-	  `;
+	  `  as unknown as CustomersTableType[];
 
     const customers = data.map((customer) => ({
       ...customer,

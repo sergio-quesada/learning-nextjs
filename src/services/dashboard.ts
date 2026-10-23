@@ -1,11 +1,7 @@
-import { headers } from 'next/headers';
 import { fetchRevenuePostgresSQL, fetchLatestInvoicesPostgresSQL, fetchCardDataPostgresSQL, fetchRevenueMySQL, fetchLatestInvoicesMySQL, fetchCardDataMySQL } from '@/app/lib/data';
 
 export async function getDashboardData() {
-    const headersList = await headers();
-    const pathname = headersList.get('host') || '';
-    // Corrección de la condición (ejemplo usando el header o una variable de entorno)
-    const isLocal = pathname.startsWith('localhost');
+    const isLocal = process.env.VERCEL !== '1';
 
     if (isLocal) {
         // Ejecutamos en paralelo para máxima velocidad

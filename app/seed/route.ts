@@ -1,9 +1,9 @@
 import bcrypt from 'bcrypt';
-import { headers } from 'next/headers';
 import postgres from 'postgres';
 import { pool } from '@/db/db';
 import { invoices, customers, revenue, users } from '../lib/placeholder-data';
 
+const isLocal = process.env.VERCEL !== '1';
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require', prepare: false });
 
 async function seedUsersPostgresSQL() {
@@ -228,10 +228,6 @@ async function seedRevenueMySQL(connection: any) {
 
 export async function GET(request: Request) {
   try {
-    const headersList = await headers();
-    console.log(headersList.get('host'));
-    const pathname = headersList.get('host') || '';
-    const isLocal = pathname.startsWith('localhost');
     const connection = await pool.getConnection();
     if (isLocal) {
       await connection.beginTransaction();

@@ -3,7 +3,7 @@ import RevenueChart from '@/app/dashboard/revenue-chart';
 import LatestInvoices from '@/app/dashboard/latest-invoices';
 import { lusitana } from '@/app/ui/fonts';
 import { getDashboardData } from '@/src/services/dashboard';
-
+export const dynamic = 'force-dynamic';
 export default async function Page() {
     const data = await getDashboardData();
     return (

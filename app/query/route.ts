@@ -1,8 +1,8 @@
-import { headers } from 'next/headers';
 import postgres from 'postgres';
 import { pool } from '@/db/db';
 
 
+const isLocal = process.env.VERCEL !== '1';
 async function listInvoicesMySQL() {
 
   const connection = await pool.getConnection();
@@ -30,11 +30,6 @@ async function listInvoicesPostgresSQL() {
 
 export async function GET(request: Request) {
   try {
-    const headersList = await headers();
-    console.log(headersList.get('host'));
-    console.log(headersList.get('host'));
-    const pathname = headersList.get('host') || '';
-    const isLocal = pathname.startsWith('localhost');
     if (isLocal) {
       return Response.json(await listInvoicesMySQL());
     }
